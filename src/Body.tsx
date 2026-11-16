@@ -3,6 +3,7 @@ import Camera, { Pick, regionText } from './Camera'
 import { REGIONS, SYSTEMS } from './content'
 import { Entry, mlabel, munit, latest, trend, MetricKey } from './store'
 import { say, stopSaying, describe } from './speech'
+import Evidence from './Evidence'
 
 const SHAPES: { id: string; side?: 'left' | 'right'; x: number; y: number; w: number; h: number; r: number }[] = [
   { id: 'head', x: 80, y: 8, w: 40, h: 48, r: 20 },
@@ -81,6 +82,7 @@ export default function Body({ entries, onAsk, pickRef }: { entries: Entry[]; on
                     })}
                   </ul>
                   <p className="note"><strong>Warning indicators:</strong> {S.warn}</p>
+                  <Evidence sys={reg.systems[sys]} />
                 </div>
               )
             })()}

@@ -50,9 +50,31 @@ export const RISKS = [
 ]
 
 export const SOURCES = [
-  { title: 'NASA Open Science Data Repository (OSDR, includes GeneLab)', pub: 'NASA', url: 'https://osdr.nasa.gov', gives: 'Open spaceflight biology and omics datasets.', use: 'Background for Risks page (Planned: direct dataset integration)' },
+  { title: 'NASA Open Science Data Repository (OSDR, includes GeneLab)', pub: 'NASA', url: 'https://osdr.nasa.gov', gives: 'Open spaceflight biology and omics datasets.', use: 'Body Systems page searches OSDR study records live (see the OSDR Developer API entry)' },
   { title: 'Human Research Roadmap', pub: 'NASA Human Research Program', url: 'https://humanresearchroadmap.nasa.gov', gives: 'NASA-defined human health risks of spaceflight (bone, muscle, radiation, behavioural health, and more).', use: 'Structure and wording of the Risks page and Body Systems effects' },
   { title: 'Life Sciences Data Archive / Lifetime Surveillance of Astronaut Health', pub: 'NASA Johnson Space Center', url: 'https://lsda.jsc.nasa.gov', gives: 'Archive of life-sciences research data. Individual astronaut data is restricted.', use: 'Background only. No astronaut data is used in ASTRA.' },
   { title: 'NASA-STD-3001: Space Flight Human-System Standard', pub: 'NASA Office of the Chief Health and Medical Officer', url: 'https://www.nasa.gov/ochmo', gives: 'Health and medical standards for crewed missions.', use: 'Basis for deferring to mission medical protocols (TODO: confirm exact document link)' },
   { title: 'The NASA Twins Study: a multidimensional analysis of a year-long human spaceflight (Garrett-Bakelman et al.)', pub: 'Science 364(6436), eaau8650, 2019', url: 'https://www.science.org/doi/10.1126/science.aau8650', gives: 'Multi-system changes measured over a year in space for one astronaut compared with an Earth-bound twin.', use: 'Supports the idea of multi-measure longitudinal monitoring' },
+  { title: 'OSD-137: Rodent Research-3-CASIS: Mouse liver transcriptomic, proteomic, epigenomic and histology data', pub: 'NASA Open Science Data Repository (GeneLab). DOI 10.26030/9k6w-4c28', url: 'https://osdr.nasa.gov/osdr/data/osd/meta/137', gives: 'An OSDR study record from the ISS Rodent Research-3 mission (SpaceX-8), which tested a potential countermeasure for spaceflight muscle and bone loss. This particular dataset holds mouse liver data.', use: 'Cited as a real example of an OSDR study record (identifier, mission, DOI). Not used for individual astronaut predictions.' },
+  { title: 'OSDR records shown in Body Systems: OSD-342, OSD-18, OSD-467 (and live search results)', pub: 'NASA Open Science Data Repository', url: 'https://osdr.nasa.gov/bio/repo/search?q=bone&data_source=cgene', gives: 'OSD-342: ISS mouse study on protecting muscle and bone (SpaceX-19, Rodent Research-19). OSD-18: osteoclast gene expression in modeled microgravity. OSD-467: cortical bone transcriptomics in hindlimb unloaded mice.', use: 'Research context in Body Systems for bone and muscle. Animal and cell studies, not astronaut data. Saved copies are used only if the live lookup fails.' },
+  { title: 'OSDR Developer API (search, study metadata and data file retrieval)', pub: 'NASA Open Science Data Repository', url: 'https://www.nasa.gov/osdr-api', gives: 'REST access to OSDR search, study metadata and data files.', use: 'Implemented: Body Systems calls the OSDR Search API (term, from, size, type) to list real study records per body system. TODO: confirm the exact documentation link before submitting.' },
+]
+
+export const TOOLS = [
+  { name: 'React, Vite, Recharts, Express', lic: 'MIT', use: 'App framework, build tool, charts and the optional AI proxy server' },
+  { name: 'MediaPipe Tasks Vision (Google)', lic: 'Apache-2.0', use: 'Browser pose and hand tracking for camera pointing. Model files load from Google public storage.' },
+  { name: 'Web Speech API (browser feature)', lic: 'n/a', use: 'Voice input and spoken replies, best in Chrome' },
+  { name: 'Optional AI API (OpenAI or Anthropic)', lic: 'Service terms', use: 'Natural-language replies when a key is set on the server. Otherwise built-in replies are used.' },
+  { name: 'Illustrations and body map', lic: 'Original', use: 'Drawn for this project as simple SVG' },
+]
+
+export const VALIDATION: [string, string, string][] = [
+  ['Body system and spaceflight risk explanations', 'Wording follows NASA Human Research Program risk areas (see Sources). TODO: add exact Human Research Roadmap page links.', 'Research-informed, hedged, not clinical advice'],
+  ['Trend flags', 'Simple prototype rule (last 3 to 4 entries move one way by a set percent). The percent is adjustable and was not derived from NASA or clinical research.', 'Experimental, not validated'],
+  ['Urinary calcium and bone message', 'ASTRA states that urinary calcium alone does not prove bone loss.', 'Cautious wording, not a diagnostic rule'],
+  ['Recommendations', 'General, hedged suggestions from logged data. Vitamins, minerals, medication and training changes are only listed as questions for the crew medical officer. TODO: add citations per suggestion.', 'Not validated'],
+  ['Camera pointing', 'MediaPipe pose and hand landmarks mapped to the nearest body region.', 'Approximate, not diagnostic'],
+  ['AI replies', 'A general language model told to use logged data as reference, ask follow-up questions, avoid diagnosis and avoid prescribing. Built-in replies are scripted.', 'Not medically validated'],
+  ['NASA OSDR study records (Body Systems)', 'Live search of NASA OSDR study metadata, with saved copies of three real records as a fallback. Mostly animal and cell studies.', 'Real NASA records shown as context, not applied to individual predictions'],
+  ['Predictions', 'None are shown. No validated model is integrated.', 'Not implemented'],
 ]

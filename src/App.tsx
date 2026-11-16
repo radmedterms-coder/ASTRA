@@ -2,11 +2,13 @@ import { useRef, useState } from 'react'
 import Body from './Body'
 import Chat, { Msg } from './Chat'
 import Emergency from './Emergency'
-import { buildRecs, Rec } from './recs'
+import { buildRecs, buildSummary, Rec } from './recs'
 import { HealthData, Trends, Simulated } from './Data'
 import type { Pick } from './Camera'
-import { RISKS, SOURCES } from './content'
-import { METRICS, loadDemo, latest, mlabel, munit, summarize, trend, series, update, useStore, Entry } from './store'
+import { RISKS, SOURCES, TOOLS, VALIDATION } from './content'
+import PageTags from './Tags'
+import { About, GuidedDemo } from './Guide'
+import { METRICS, getThreshold, loadDemo, latest, mlabel, munit, summarize, trend, series, update, useStore, Entry } from './store'
 
 const PAGES = ['Home', 'ASTRA AI', 'Body Systems', 'Health Data', 'Trends', 'Spaceflight Risks', 'Recommendations', 'Sources', 'Status', 'Settings'] as const
 type Page = (typeof PAGES)[number]
@@ -17,11 +19,22 @@ export default function App() {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [prompt, setPrompt] = useState('')
   const [emg, setEmg] = useState(false)
+  const [copied, setCopied] = useState(false)
   const pick = useRef<Pick | null>(null)
   const [cs, setCs] = useState(''), [cd, setCd] = useState('1')
   const e = s.entries
   const ask = (q: string) => { setPrompt(q); setPage('ASTRA AI') }
   const day = s.profile?.day ?? 1
+  const copySummary = () => { navigator.clipboard?.writeText(buildSummary(e, s.profile?.callsign ?? 'CREW', day)).then(() => setCopied(true)).catch(() => {}) }
+  const demoSteps = [
+    { label: '1. Load the simulated mission', detail: 'Fills 8 fictional weeks of readings, all labelled SIMULATED.', run: () => loadDemo() },
+    { label: '2. Log a reading', detail: 'Add a new measurement and see it recorded against the mission day.', run: () => setPage('Health Data') },
+    { label: '3. Review the trends', detail: 'ASTRA flags the muscle and urinary calcium changes with the prototype rule.', run: () => setPage('Trends') },
+    { label: '4. Point at the left thigh', detail: 'Opens the thigh: anatomy, NASA-informed spaceflight effects and your readings. Press Read aloud to hear it.', run: () => { pick.current = { id: 'thigh', side: 'left' }; setPage('Body Systems') } },
+    { label: '5. Ask ASTRA', detail: 'ASTRA asks follow-up questions and explains, without diagnosing.', run: () => ask('My left thigh feels weak. What could be going on?') },
+    { label: '6. See your recommendations', detail: 'Personalised suggestions, with questions to raise with your medical officer.', run: () => setPage('Recommendations') },
+    { label: '7. Prepare a summary for medical personnel', detail: 'Copies your readings, trend flags and symptoms so you can share them.', run: copySummary },
+  ]
 
   const top = (
     <header className="top">
@@ -55,11 +68,13 @@ export default function App() {
   if (page === 'Home') body = (
     <div>
       <Simulated entries={e} />
+      <About />
       <section className="card hero">
         <h1>{e.length ? `Welcome back, ${s.profile.callsign}.` : 'Day one. Nothing logged yet.'}</h1>
         <p className="lead">{e.length ? `${e.length} entries logged. Mission day ${day}.` : 'Hello, I am ASTRA. How are you feeling today? Start by logging a reading, talking to me, or pointing at an area of concern.'}</p>
         <div className="row"><button className="btn primary" onClick={() => setPage('Health Data')}>Log first readings</button><button className="btn" onClick={() => setPage('ASTRA AI')}>Talk to ASTRA</button><button className="btn" onClick={() => setPage('Body Systems')}>Point at a concern</button></div>
       </section>
+      <GuidedDemo steps={demoSteps} copied={copied} />
       <section className="card"><h2>Notifications</h2>
         {flags.length ? <ul>{flags.map((x) => <li key={x.m.key} className="flag">Attention: {x.m.label} {x.t!.dir} {Math.abs(x.t!.pct)}% over last {x.t!.n} entries. <button className="link" onClick={() => setPage('Trends')}>View trend</button></li>)}</ul> : <p className="empty">No notifications. Trend flags appear once 3 or more entries show a pattern.</p>}
       </section>
@@ -80,6 +95,7 @@ export default function App() {
     body = (
       <div>
         <Simulated entries={e} />
+        <div className="row"><button className="btn primary" onClick={copySummary}>Copy summary for medical personnel</button>{copied && <span className="flag" role="status">Copied</span>}</div>
         <p className="note">These suggestions come from your logged readings, symptoms and mission day. They are not a diagnosis. ASTRA does not prescribe medication, supplements, doses or exercise plans. Where a topic needs that (vitamins, minerals, medication, training changes), it is listed under "Ask your medical officer about" so you can raise it and follow your mission medical protocol. Trend flags use a simple prototype rule, not clinical thresholds.</p>
         {groups.map(([k, label]) => {
           const items = R.filter((r) => r.kind === k)
@@ -104,8 +120,11 @@ export default function App() {
     )
   }
   else if (page === 'Sources') body = (
-    <div><p className="muted">NASA research informs ASTRA's content. No real astronaut data is used. All demo numbers are simulated. Confirm each link and title before submitting.</p>
-      {SOURCES.map((x) => <section className="card" key={x.title}><h3>{x.title}</h3><p>{x.pub} | <a href={x.url} target="_blank" rel="noreferrer">{x.url}</a></p><p><strong>Provides:</strong> {x.gives}</p><p><strong>Used by:</strong> {x.use}</p></section>)}</div>
+    <div><p className="muted">NASA research informs ASTRA's content. No real astronaut data is used, and all demo numbers are simulated. Confirm each link and title before submitting.</p>
+      <h2>NASA sources</h2>
+      {SOURCES.map((x) => <section className="card" key={x.title}><h3>{x.title}</h3><p>{x.pub} | <a href={x.url} target="_blank" rel="noreferrer">{x.url}</a></p><p><strong>Provides:</strong> {x.gives}</p><p><strong>Used by:</strong> {x.use}</p></section>)}
+      <h2>Third-party tools and credits</h2>
+      <section className="card"><table><thead><tr><th>Tool</th><th>Licence</th><th>Used for</th></tr></thead><tbody>{TOOLS.map((t) => <tr key={t.name}><td>{t.name}</td><td>{t.lic}</td><td>{t.use}</td></tr>)}</tbody></table></section></div>
   )
   else if (page === 'Status') {
     const F: [string, string, string][] = [
@@ -120,10 +139,16 @@ export default function App() {
       ['Emergency summary for medical personnel', 'Implemented', 'Does NOT contact mission control'],
       ['Demo mission data (8 weeks)', 'Simulated', 'Fictional, labelled, wipeable'],
       ['Predictive models (e.g. bone trend estimate)', 'Planned', 'Needs validated model and sufficient data'],
-      ['Direct NASA dataset import (OSDR)', 'Planned', 'NASA research informs content only for now'],
+      ['NASA OSDR study lookup in Body Systems (live, saved copies as fallback)', 'Implemented', 'Real NASA study records with IDs. Mostly animal and cell studies, shown as context only'],
+      ['Using NASA data numerically (for example comparing your trends with published values)', 'Planned', 'Needs validated, citable values'],
       ['3D anatomy models, wearable sensors, authentication, real comms', 'Planned', ''],
     ]
-    body = <section className="card"><table><thead><tr><th>Feature</th><th>Status</th><th>Notes</th></tr></thead><tbody>{F.map((f) => <tr key={f[0]}><td>{f[0]}</td><td><span className={'pill ' + f[1]}>{f[1]}</span></td><td>{f[2]}</td></tr>)}</tbody></table></section>
+    body = (
+      <div>
+        <section className="card"><table><thead><tr><th>Feature</th><th>Status</th><th>Notes</th></tr></thead><tbody>{F.map((f) => <tr key={f[0]}><td>{f[0]}</td><td><span className={'pill ' + f[1]}>{f[1]}</span></td><td>{f[2]}</td></tr>)}</tbody></table></section>
+        <section className="card"><h2>Scientific basis and validation</h2><table><thead><tr><th>Feature</th><th>Basis</th><th>Validation</th></tr></thead><tbody>{VALIDATION.map((v) => <tr key={v[0]}><td>{v[0]}</td><td>{v[1]}</td><td>{v[2]}</td></tr>)}</tbody></table></section>
+      </div>
+    )
   } else body = (
     <div className="grid2">
       <section className="card"><h2>Mission</h2>
@@ -134,6 +159,9 @@ export default function App() {
         <p>Load 8 fictional weeks including a leg weakness scenario. Everything is labelled SIMULATED.</p>
         <div className="row"><button className="btn primary" onClick={loadDemo}>Load simulated demo mission (SIMULATED DATA)</button><button className="btn" onClick={() => update((st) => ({ ...st, entries: [], demo: false }))}>Wipe all data</button></div>
         <p className="muted">{series(e, 'hr').length + e.length > 0 ? `${e.length} entries stored.` : 'No data stored.'}</p></section>
+      <section className="card"><h2>Trend sensitivity</h2>
+        <p>A trend is flagged when the last 3 to 4 entries move one way by at least this much. It is a prototype setting, not a clinical threshold.</p>
+        <label>Flag changes of at least<select value={getThreshold()} onChange={(ev) => update((st) => ({ ...st, threshold: Number(ev.target.value) }))}>{[3, 5, 10].map((n) => <option key={n} value={n}>{n}%</option>)}</select></label></section>
       <section className="card"><h2>Data protection</h2><p>Data is stored unencrypted in this browser only. There is no authentication. This is not medical-grade security. Use fictional data only. The AI key lives in the server .env file, never in the frontend.</p></section>
     </div>
   )
@@ -143,7 +171,7 @@ export default function App() {
       {top}
       <div className="shell">
         <nav aria-label="Main">{PAGES.map((p) => <button key={p} className={'nav' + (page === p ? ' on' : '')} onClick={() => setPage(p)} aria-current={page === p ? 'page' : undefined}>{p}</button>)}</nav>
-        <main><h1 className="ph">{page}</h1>{body}</main>
+        <main><h1 className="ph">{page}</h1><PageTags page={page} entries={e} />{body}</main>
       </div>
       {emg && <Emergency entries={e} callsign={s.profile?.callsign} day={day} onClose={() => setEmg(false)} />}
     </div>
