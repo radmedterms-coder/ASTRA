@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Entry, METRICS, MetricKey, latest, mlabel, munit, series, trend, update } from './store'
+import { Entry, METRICS, MetricKey, latest, mlabel, munit, series, trend, update, getThreshold } from './store'
 import { REGIONS } from './content'
 
 export function Simulated({ entries }: { entries: Entry[] }) {
@@ -88,7 +88,8 @@ export function Trends({ entries }: { entries: Entry[] }) {
   return (
     <div>
       <Simulated entries={entries} />
-      <p className="muted">Trend flags use a simple prototype rule (last 3 to 4 entries moving one way by 5% or more). They are not clinical thresholds. Predictions are not shown because no validated model is integrated yet (Planned).</p>
+      <div className="note"><p>Trend flags use a simple prototype rule: the last 3 to 4 entries move in one direction by {getThreshold()}% or more. It is not a clinical threshold. Predictions are not shown because no validated model is integrated yet (Planned).</p>
+        <details><summary>Why {getThreshold()}%?</summary><p>It is a prototype setting chosen to avoid flagging small day-to-day variation. It is not a value from NASA or clinical research. You can change it in Settings. A real system would use validated, measurement-specific limits and personal baselines.</p></details></div>
       <section className="grid2">
         {METRICS.map((m) => {
           const s = series(entries, m.key), t = trend(entries, m.key)

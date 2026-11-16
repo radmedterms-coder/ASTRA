@@ -77,7 +77,7 @@ export default function Camera({ labelOf, onPick }: { labelOf: (id: string) => s
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera is not available in this browser or context. Use Chrome on localhost or HTTPS.')
       const fs = await FilesetResolver.forVisionTasks(WASM)
-      pose.current = await PoseLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: POSE }, runningMode: 'VIDEO', numPoses: 1 })
+      pose.current = await PoseLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: POSE }, runningMode: 'VIDEO', numPoses: 1, minPoseDetectionConfidence: 0.4, minPosePresenceConfidence: 0.4, minTrackingConfidence: 0.4 })
       hand.current = await HandLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: HAND }, runningMode: 'VIDEO', numHands: 1 })
       stream.current = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
       const v = video.current!
@@ -104,6 +104,7 @@ export default function Camera({ labelOf, onPick }: { labelOf: (id: string) => s
       const po = pose.current.detectForVideo(v, now)
       const ha = hand.current.detectForVideo(v, now)
       const L = po.landmarks[0], H = ha.landmarks[0]
+      if (L) { ctx.fillStyle = 'rgba(94,224,255,0.55)'; for (const c of candidates(L)) { ctx.beginPath(); ctx.arc(c.x * w, c.y * h, 5, 0, 7); ctx.fill() } }
       let key = ''
       if (!L) setMsg('Body not found. Step back so your whole body is in view.')
       else if (!H) setMsg('Body found. Point at an area of concern with your index finger.')
@@ -142,6 +143,7 @@ export default function Camera({ labelOf, onPick }: { labelOf: (id: string) => s
       {phase === 'off' && (
         <div>
           <p>ASTRA can use your webcam to find the body region you point at. Video is processed in your browser only and is never uploaded or saved. The model files download once from public CDNs. Pointing is approximate and is not a diagnosis or emergency detector.</p>
+          <ul className="muted"><li>Stand 2 to 3 metres back so your head and feet are in frame.</li><li>Use bright, even light and a plain background.</li><li>Point with one finger and hold still for about a second.</li><li>If tracking struggles, click the body map instead.</li></ul>
           <button className="btn primary" onClick={start}>Allow camera and start pointing</button>
         </div>
       )}

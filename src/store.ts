@@ -18,7 +18,7 @@ export const mlabel = (k: string) => METRICS.find((m) => m.key === k)?.label ?? 
 export const munit = (k: string) => METRICS.find((m) => m.key === k)?.unit ?? ''
 
 export interface Entry { id: string; day: number; key: MetricKey | 'symptom'; value: number; note?: string; region?: string; sim?: boolean }
-export interface State { profile: { callsign: string; day: number } | null; entries: Entry[]; demo: boolean }
+export interface State { profile: { callsign: string; day: number } | null; entries: Entry[]; demo: boolean; threshold?: number }
 
 const KEY = 'astra.v1'
 function load(): State {
@@ -32,18 +32,19 @@ export function update(fn: (s: State) => State) {
   try { localStorage.setItem(KEY, JSON.stringify(state)) } catch { /* storage full or blocked */ }
   subs.forEach((f) => f())
 }
+export const getThreshold = () => state.threshold ?? 5
 export const useStore = () => useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f) } }, () => state)
 
 export const series = (e: Entry[], k: string) => e.filter((x) => x.key === k).sort((a, b) => a.day - b.day)
 export const latest = (e: Entry[], k: string) => { const s = series(e, k); return s.length ? s[s.length - 1] : null }
 
-// Prototype descriptive rule (NOT a clinical threshold): last 3-4 entries move in one direction by >= 5%.
+// Prototype descriptive rule (NOT a clinical threshold): last 3-4 entries move in one direction by >= threshold % (default 5, adjustable in Settings).
 export function trend(e: Entry[], k: MetricKey) {
   const s = series(e, k).slice(-4)
   if (s.length < 3 || s[0].value === 0) return null
   const d = s.slice(1).map((x, i) => x.value - s[i].value)
   const pct = ((s[s.length - 1].value - s[0].value) / Math.abs(s[0].value)) * 100
-  if (Math.abs(pct) < 5) return null
+  if (Math.abs(pct) < getThreshold()) return null
   if (d.every((x) => x >= 0)) return { dir: 'rising' as const, pct: Math.round(pct * 10) / 10, n: s.length }
   if (d.every((x) => x <= 0)) return { dir: 'falling' as const, pct: Math.round(pct * 10) / 10, n: s.length }
   return null

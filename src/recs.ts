@@ -1,4 +1,4 @@
-import { Entry, MetricKey, METRICS, latest, series, trend, mlabel, munit } from './store'
+import { Entry, MetricKey, METRICS, latest, series, trend, mlabel, munit, summarize } from './store'
 
 export interface Rec { kind: 'attention' | 'routine' | 'log'; title: string; why: string; todo: string[]; ask: string[] }
 
@@ -93,4 +93,16 @@ export function buildRecs(e: Entry[], day: number): Rec[] {
   if (over.length) out.push({ kind: 'log', title: 'Some measurements are due', why: `Last logged: ${over.map((x) => `${mlabel(x.m.key).toLowerCase()} (day ${x.l!.day})`).join(', ')}. The prototype assumes weekly assessments.`,
     todo: ['Log them in Health Data.'], ask: [] })
   return out
+}
+
+export function buildSummary(e: Entry[], callsign: string, day: number): string {
+  const flags = METRICS.map((m) => ({ m, t: trend(e, m.key) })).filter((x) => x.t).map((x) => `- ${x.m.label}: ${x.t!.dir} ${Math.abs(x.t!.pct)}% over the last ${x.t!.n} entries (prototype rule)`)
+  return [
+    'ASTRA HEALTH SUMMARY FOR MEDICAL PERSONNEL (prototype)',
+    `Callsign: ${callsign} | Mission day ${day}`,
+    e.some((x) => x.sim) ? 'NOTE: contains SIMULATED data.' : '',
+    'Trend flags:', ...(flags.length ? flags : ['- none flagged']),
+    'Logged data:', summarize(e) || '(nothing logged)',
+    'Self-logged data summary. Not a diagnosis. ASTRA cannot contact mission control.',
+  ].filter(Boolean).join('\n')
 }
