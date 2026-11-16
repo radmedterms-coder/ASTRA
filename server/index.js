@@ -1,5 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const app = express()
 app.use(express.json({ limit: '50kb' }))
@@ -89,4 +91,10 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
-app.listen(8787, () => console.log('ASTRA API listening on http://localhost:8787 (AI: ' + (provider() || 'not connected') + ')'))
+// Serve the built app (the dist folder made by "npm run build")
+const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist')
+app.use(express.static(dist))
+app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')))
+
+const PORT = process.env.PORT || 8787
+app.listen(PORT, () => console.log('ASTRA listening on port ' + PORT + ' (AI: ' + (provider() || 'not connected') + ')'))
