@@ -1,9 +1,12 @@
 import 'dotenv/config'
 import express from 'express'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const app = express()
+app.set('trust proxy', 1) // Render sits behind a proxy, so req.ip is the real visitor
 app.use(express.json({ limit: '50kb' }))
 
 const SYSTEM = `You are ASTRA, a personal health assistant for an astronaut on a space mission (NASA Space Apps 2026 prototype). You are not a doctor and never claim to be, but you act like a sharp, caring flight medic doing a first check-in: you help the person work out what might be going on and what to do next.
@@ -44,13 +47,27 @@ Safety:
 - If data is marked SIMULATED, say so.
 - Plain text only. No em dashes.`
 
+// Protects your AI credit on a public site: per-visitor and per-day caps (adjust with RATE_LIMIT and DAILY_LIMIT env vars).
+const hits = new Map()
+let day = new Date().toDateString(), dayCount = 0
+function limit(req, res, next) {
+  const now = Date.now()
+  const recent = (hits.get(req.ip) || []).filter((t) => now - t < 10 * 60 * 1000)
+  if (recent.length >= Number(process.env.RATE_LIMIT || 20)) return res.status(429).json({ error: 'Too many requests' })
+  recent.push(now); hits.set(req.ip, recent)
+  const d = new Date().toDateString()
+  if (d !== day) { day = d; dayCount = 0 }
+  if (++dayCount > Number(process.env.DAILY_LIMIT || 300)) return res.status(429).json({ error: 'Daily limit reached' })
+  next()
+}
+
 const AKEY = () => process.env.ANTHROPIC_API_KEY
 const OKEY = () => process.env.OPENAI_API_KEY
 const provider = () => (AKEY() ? 'anthropic' : OKEY() ? 'openai' : null)
 
 app.get('/api/status', (_req, res) => res.json({ ai: !!provider(), provider: provider() }))
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', limit, async (req, res) => {
   const prov = provider()
   if (!prov) return res.status(503).json({ error: 'AI key not configured' })
   const { messages, context } = req.body || {}
@@ -91,8 +108,8 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
-// Serve the built app (the dist folder made by "npm run build")
-const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist')
+// Serve the built website (run "npm run build" first). Any other path returns the app.
+const dist = path.join(__dirname, '..', 'dist')
 app.use(express.static(dist))
 app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')))
 
